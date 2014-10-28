@@ -1,9 +1,6 @@
 package worker
 
-import (
-	"fmt"
-	"reflect"
-)
+import "reflect"
 
 type (
 	// Manager is manager for a workers
@@ -47,7 +44,7 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 		return nil
 	}
 
-	var errorIndex int
+	errorIndex := -1
 	if outNum := rv.Type().NumOut(); outNum != 0 {
 		for i := 0; i < outNum; i++ {
 			outName := rv.Type().Out(i).Name()
@@ -182,7 +179,6 @@ func (m *Manager) End() []*Process {
 	for {
 		select {
 		case res := <-m.Result:
-			fmt.Println(res)
 			result[res.index] = res
 			m.count--
 		}
