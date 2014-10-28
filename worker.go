@@ -1,6 +1,9 @@
 package worker
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 type (
 	// Manager is manager for a workers
@@ -8,6 +11,7 @@ type (
 		count         int
 		workerNum     int
 		forceStop     bool
+		start         chan int
 		Processes     chan *Process
 		Result        chan *Process
 		FailFilter    []FilterFunc
@@ -22,7 +26,7 @@ type (
 		ID       string
 		Function ProcessFunc
 		Result   []interface{}
-		Err      error
+		Error    error
 	}
 
 	// ProcessFunc is function executed by individual worker
@@ -42,6 +46,18 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 	if argsNum := rv.Type().NumIn(); argsNum != len(args) {
 		return nil
 	}
+
+	var errorIndex int
+	if outNum := rv.Type().NumOut(); outNum != 0 {
+		for i := 0; i < outNum; i++ {
+			outName := rv.Type().Out(i).Name()
+			if outName == "error" {
+				errorIndex = i
+				break
+			}
+		}
+	}
+
 	rArgs := make([]reflect.Value, len(args))
 	for i, arg := range args {
 		rArgs[i] = reflect.ValueOf(arg)
@@ -50,13 +66,16 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 	return func() ([]interface{}, error) {
 		ret := rv.Call(rArgs)
 		result := []interface{}{}
-		var err error
-		for i := len(ret) - 1; i >= 0; i-- {
-			if e, ok := ret[i].Interface().(error); ok {
-				err = e
-				break
+		err, ok := ret[errorIndex].Interface().(error)
+		if !ok {
+			err = nil
+		}
+
+		for i, v := range ret {
+			if i == errorIndex {
+				continue
 			}
-			result = append(result, ret[i].Interface())
+			result = append(result, v.Interface())
 		}
 
 		if err != nil {
@@ -73,7 +92,9 @@ func NewManager(workerNum int) *Manager {
 		count:         0,
 		workerNum:     workerNum,
 		forceStop:     false,
+		start:         make(chan int),
 		Processes:     make(chan *Process, 1),
+		Result:        make(chan *Process, 1),
 		FailFilter:    []FilterFunc{},
 		SuccessFilter: []FilterFunc{},
 		NotExec:       []string{},
@@ -86,10 +107,6 @@ func NewManager(workerNum int) *Manager {
 	return m
 }
 
-func filter() {
-
-}
-
 // start worker
 func (m *Manager) startWorker() {
 	for p := range m.Processes {
@@ -97,8 +114,8 @@ func (m *Manager) startWorker() {
 			return
 		}
 
-		p.Result, p.Err = p.Function()
-		if len(p.Result) != 0 {
+		p.Result, p.Error = p.Function()
+		if p.Error != nil {
 			// execute fail filter
 			for _, f := range m.FailFilter {
 				f(p)
@@ -115,11 +132,11 @@ func (m *Manager) startWorker() {
 }
 
 // Add is adding a new worker process into worker queue
-func (m *Manager) Add(id string, function interface{}, args ...interface{}) *Manager {
+func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
 	f := wrap(function, args...)
 	if f == nil {
 		m.NotExec = append(m.NotExec, id)
-		return m
+		return
 	}
 
 	p := &Process{
@@ -127,28 +144,35 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) *Man
 		ID:       id,
 		Function: f,
 		Result:   nil,
-		Err:      nil,
+		Error:    nil,
 	}
 
+	m.count++
 	go func() {
+		<-m.start
 		for {
 			select {
 			case m.Processes <- p:
-				m.count++
+				return
 			}
 		}
 	}()
-
-	return m
 }
 
-// Fail adds a fail filter
-func (m *Manager) Fail(f ...FilterFunc) {
+// Start give procces worker
+func (m *Manager) Start() {
+	for i := 0; i < m.count; i++ {
+		m.start <- 1
+	}
+}
+
+// AddFail adds a fail filter
+func (m *Manager) AddFail(f ...FilterFunc) {
 	m.FailFilter = append(m.FailFilter, f...)
 }
 
-// Success adds a success filter
-func (m *Manager) Success(f ...FilterFunc) {
+// AddSuccess adds a success filter
+func (m *Manager) AddSuccess(f ...FilterFunc) {
 	m.SuccessFilter = append(m.SuccessFilter, f...)
 }
 
@@ -158,6 +182,7 @@ func (m *Manager) End() []*Process {
 	for {
 		select {
 		case res := <-m.Result:
+			fmt.Println(res)
 			result[res.index] = res
 			m.count--
 		}
@@ -177,9 +202,9 @@ func (m *Manager) EndWithFailStop() ([]*Process, error) {
 	for {
 		select {
 		case res := <-m.Result:
-			if res.Err != nil {
+			if res.Error != nil {
 				m.forceStop = true
-				return result, res.Err
+				return result, res.Error
 			}
 			result[res.index] = res
 			m.count--
@@ -191,4 +216,9 @@ func (m *Manager) EndWithFailStop() ([]*Process, error) {
 	}
 
 	return result, nil
+}
+
+// GetNotExecute returns ids represents process
+func (m *Manager) GetNotExecute() []string {
+	return m.NotExec
 }
