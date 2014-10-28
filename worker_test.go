@@ -138,7 +138,7 @@ func TestStart(t *testing.T) {
 	})
 }
 
-func TestAddFail(t *testing.T) {
+func TestFail(t *testing.T) {
 	Convey("Given function and Manager", t, func() {
 		f := func(a string, b int, c []string) (string, error) {
 			index := b
@@ -152,21 +152,21 @@ func TestAddFail(t *testing.T) {
 
 		Convey("When Add the function", func() {
 			m.Add("test_1", f, "test", 10, []string{"0", "1", "2"})
-			errMsg := make(chan string)
-			m.AddFail(func(p *Process) {
-				errMsg <- p.Error.Error()
+			var errMsg string
+			m.Fail(func(p *Process) {
+				errMsg = p.Error.Error()
 			})
 			m.Start()
+			m.End()
 
 			Convey("Then err is returned", func() {
-				msg := <-errMsg
-				So(msg, ShouldEqual, "test")
+				So(errMsg, ShouldEqual, "test")
 			})
 		})
 	})
 }
 
-func TestAddSuccess(t *testing.T) {
+func TestSuccess(t *testing.T) {
 	Convey("Given function and Manager", t, func() {
 		f := func(a string, b int, c []string) (string, error) {
 			index := b
@@ -180,15 +180,15 @@ func TestAddSuccess(t *testing.T) {
 
 		Convey("When Add the function", func() {
 			m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
-			successMsg := make(chan string)
-			m.AddSuccess(func(p *Process) {
-				successMsg <- p.Result[0].(string)
+			var successMsg string
+			m.Success(func(p *Process) {
+				successMsg = p.Result[0].(string)
 			})
 			m.Start()
+			m.End()
 
 			Convey("Then err is returned", func() {
-				msg := <-successMsg
-				So(msg, ShouldEqual, "test0")
+				So(successMsg, ShouldEqual, "test0")
 			})
 		})
 	})
@@ -213,42 +213,6 @@ func TestEnd(t *testing.T) {
 
 			Convey("Then err is returned", func() {
 				So(res[0].Result[0].(string), ShouldEqual, "test0")
-			})
-		})
-	})
-}
-
-func TestEndWithFailStop(t *testing.T) {
-	Convey("Given function and Manager", t, func() {
-		f := func(a string, b int, c []string) (string, error) {
-			index := b
-			if len(c) <= b {
-				return "", errors.New("test")
-			}
-			return a + c[index], nil
-		}
-
-		m := NewManager(5)
-		m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
-
-		Convey("When retrieves results", func() {
-			m.Start()
-			res, err := m.EndWithFailStop()
-
-			Convey("Then err is returned", func() {
-				So(err, ShouldBeNil)
-				So(res[0].Result[0].(string), ShouldEqual, "test0")
-			})
-		})
-
-		Convey("When return err", func() {
-			m.Add("test_1", f, "test", 10, []string{"0", "1", "2"})
-			m.Start()
-			_, err := m.EndWithFailStop()
-
-			Convey("Then err is returned", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "test")
 			})
 		})
 	})

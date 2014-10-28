@@ -115,18 +115,6 @@ func (m *Manager) startWorker() {
 		}
 
 		p.Result, p.Error = p.Function()
-		if p.Error != nil {
-			// execute fail filter
-			for _, f := range m.FailFilter {
-				f(p)
-			}
-		} else if len(p.Result) != 0 {
-			// execute success filter
-			for _, f := range m.SuccessFilter {
-				f(p)
-			}
-		}
-
 		m.Result <- p
 	}
 }
@@ -166,13 +154,13 @@ func (m *Manager) Start() {
 	}
 }
 
-// AddFail adds a fail filter
-func (m *Manager) AddFail(f ...FilterFunc) {
+// Fail adds a fail filter
+func (m *Manager) Fail(f ...FilterFunc) {
 	m.FailFilter = append(m.FailFilter, f...)
 }
 
-// AddSuccess adds a success filter
-func (m *Manager) AddSuccess(f ...FilterFunc) {
+// Success adds a success filter
+func (m *Manager) Success(f ...FilterFunc) {
 	m.SuccessFilter = append(m.SuccessFilter, f...)
 }
 
@@ -181,8 +169,20 @@ func (m *Manager) End() []*Process {
 	result := make([]*Process, m.count)
 	for {
 		select {
-		case res := <-m.Result:
-			result[res.index] = res
+		case p := <-m.Result:
+			if p.Error != nil {
+				// execute fail filter
+				for _, f := range m.FailFilter {
+					f(p)
+				}
+			} else if len(p.Result) != 0 {
+				// execute success filter
+				for _, f := range m.SuccessFilter {
+					f(p)
+				}
+			}
+
+			result[p.index] = p
 			m.count--
 		}
 
@@ -192,29 +192,6 @@ func (m *Manager) End() []*Process {
 	}
 
 	return result
-}
-
-// EndWithFailStop retrieves results by worker
-// Force worker to stop a process when err occured
-func (m *Manager) EndWithFailStop() ([]*Process, error) {
-	result := make([]*Process, m.count)
-	for {
-		select {
-		case res := <-m.Result:
-			if res.Error != nil {
-				m.forceStop = true
-				return result, res.Error
-			}
-			result[res.index] = res
-			m.count--
-		}
-
-		if m.count <= 0 {
-			break
-		}
-	}
-
-	return result, nil
 }
 
 // GetNotExecute returns ids represents process
