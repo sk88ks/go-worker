@@ -63,16 +63,19 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 	return func() ([]interface{}, error) {
 		ret := rv.Call(rArgs)
 		result := []interface{}{}
-		err, ok := ret[errorIndex].Interface().(error)
-		if !ok {
-			err = nil
-		}
 
+		var e interface{}
 		for i, v := range ret {
 			if i == errorIndex {
+				e = ret[i].Interface()
 				continue
 			}
 			result = append(result, v.Interface())
+		}
+
+		err, ok := e.(error)
+		if !ok {
+			err = nil
 		}
 
 		if err != nil {
