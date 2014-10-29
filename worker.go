@@ -133,11 +133,11 @@ func (m *Manager) stopProcesses() {
 }
 
 // Add is adding a new worker process into worker queue
-func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
+func (m *Manager) Add(id string, function interface{}, args ...interface{}) *Manager {
 	f := wrap(function, args...)
 	if f == nil {
 		m.NotExec = append(m.NotExec, id)
-		return
+		return m
 	}
 
 	p := &Process{
@@ -161,16 +161,20 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
 			}
 		}
 	}()
+
+	return m
 }
 
 // Fail adds a fail filter
-func (m *Manager) Fail(f ...FilterFunc) {
+func (m *Manager) Fail(f ...FilterFunc) *Manager {
 	m.FailFilter = append(m.FailFilter, f...)
+	return m
 }
 
 // Success adds a success filter
-func (m *Manager) Success(f ...FilterFunc) {
+func (m *Manager) Success(f ...FilterFunc) *Manager {
 	m.SuccessFilter = append(m.SuccessFilter, f...)
+	return m
 }
 
 // Run retrieves result by worker
