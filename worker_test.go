@@ -166,29 +166,30 @@ func TestFail(t *testing.T) {
 	})
 }
 
-func TestSuccess(t *testing.T) {
-	Convey("Given function and Manager", t, func() {
-		f := func(a string, b int, c []string) (string, error) {
-			index := b
-			if len(c) <= b {
-				return "", errors.New("test")
-			}
-			return a + c[index], nil
-		}
-
-		m := NewManager(5)
-
-		Convey("When Add the function", func() {
-			m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
-			var successMsg string
-			m.Success(func(p *Process) {
-				successMsg = p.Result[0].(string)
-			})
-			m.Run()
-
-			Convey("Then err is returned", func() {
-				So(successMsg, ShouldEqual, "test0")
-			})
-		})
-	})
-}
+//
+//func TestSuccess(t *testing.T) {
+//	Convey("Given function and Manager", t, func() {
+//		f := func(a string, b int, c []string) (string, error) {
+//			index := b
+//			if len(c) <= b {
+//				return "", errors.New("test")
+//			}
+//			return a + c[index], nil
+//		}
+//
+//		m := NewManager(5)
+//
+//		Convey("When Add the function", func() {
+//			m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
+//			var successMsg string
+//			m.Success(func(p *Process) {
+//				successMsg = p.Result[0].(string)
+//			})
+//			m.Run()
+//
+//			Convey("Then err is returned", func() {
+//				So(successMsg, ShouldEqual, "test0")
+//			})
+//		})
+//	})
+//}

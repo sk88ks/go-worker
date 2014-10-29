@@ -1,9 +1,6 @@
 package worker
 
-import (
-	"fmt"
-	"reflect"
-)
+import "reflect"
 
 type (
 	// Manager is manager for a workers
@@ -117,8 +114,7 @@ func (m *Manager) startWorker() {
 	for {
 		select {
 		case <-m.stop:
-			fmt.Println()
-			return
+			break
 		case p := <-m.In:
 			p.Result, p.Error = p.Function()
 			m.Out <- p
@@ -127,8 +123,9 @@ func (m *Manager) startWorker() {
 }
 
 // Stop forces workers to stop their process
-func (m *Manager) stopWorkers() {
-	for i := 0; i < m.workerNum; i++ {
+func (m *Manager) stopProcesses() {
+	num := m.workerNum + m.count
+	for i := 0; i < num; i++ {
 		m.stop <- 1
 	}
 }
@@ -154,8 +151,10 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
 		<-m.start
 		for {
 			select {
+			case <-m.stop:
+				break
 			case m.In <- p:
-				return
+				break
 			}
 		}
 	}()
@@ -185,10 +184,6 @@ func (m *Manager) Run() []*Process {
 
 	count := m.count
 	for {
-		if m.forceStop {
-			break
-		}
-
 		select {
 		case p := <-m.Out:
 			if p.Error != nil {
@@ -207,12 +202,16 @@ func (m *Manager) Run() []*Process {
 			count--
 		}
 
+		if m.forceStop {
+			break
+		}
+
 		if count <= 0 {
 			break
 		}
 	}
 
-	m.stopWorkers()
+	m.stopProcesses()
 	return result
 }
 
