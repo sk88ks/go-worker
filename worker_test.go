@@ -116,7 +116,7 @@ func TestAdd(t *testing.T) {
 	})
 }
 
-func TestStart(t *testing.T) {
+func TestRun(t *testing.T) {
 	Convey("Given function and Manager", t, func() {
 		f := func(a string, b int, c []string) (string, error) {
 			index := b
@@ -127,12 +127,13 @@ func TestStart(t *testing.T) {
 		}
 
 		m := NewManager(5)
+		m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
 
-		Convey("When Add the function", func() {
-			m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
-			m.Start()
+		Convey("When retrieves results", func() {
+			res := m.Run()
 
-			Convey("Then", func() {
+			Convey("Then err is returned", func() {
+				So(res[0].Result[0].(string), ShouldEqual, "test0")
 			})
 		})
 	})
@@ -156,8 +157,7 @@ func TestFail(t *testing.T) {
 			m.Fail(func(p *Process) {
 				errMsg = p.Error.Error()
 			})
-			m.Start()
-			m.End()
+			m.Run()
 
 			Convey("Then err is returned", func() {
 				So(errMsg, ShouldEqual, "test")
@@ -184,35 +184,10 @@ func TestSuccess(t *testing.T) {
 			m.Success(func(p *Process) {
 				successMsg = p.Result[0].(string)
 			})
-			m.Start()
-			m.End()
+			m.Run()
 
 			Convey("Then err is returned", func() {
 				So(successMsg, ShouldEqual, "test0")
-			})
-		})
-	})
-}
-
-func TestEnd(t *testing.T) {
-	Convey("Given function and Manager", t, func() {
-		f := func(a string, b int, c []string) (string, error) {
-			index := b
-			if len(c) <= b {
-				return "", errors.New("test")
-			}
-			return a + c[index], nil
-		}
-
-		m := NewManager(5)
-		m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
-		m.Start()
-
-		Convey("When retrieves results", func() {
-			res := m.End()
-
-			Convey("Then err is returned", func() {
-				So(res[0].Result[0].(string), ShouldEqual, "test0")
 			})
 		})
 	})

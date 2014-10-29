@@ -147,13 +147,6 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
 	}()
 }
 
-// Start give procces worker
-func (m *Manager) Start() {
-	for i := 0; i < m.count; i++ {
-		m.start <- 1
-	}
-}
-
 // Fail adds a fail filter
 func (m *Manager) Fail(f ...FilterFunc) {
 	m.FailFilter = append(m.FailFilter, f...)
@@ -164,9 +157,18 @@ func (m *Manager) Success(f ...FilterFunc) {
 	m.SuccessFilter = append(m.SuccessFilter, f...)
 }
 
-// End retrieves result by worker
-func (m *Manager) End() []*Process {
+// Run retrieves result by worker
+func (m *Manager) Run() []*Process {
 	result := make([]*Process, m.count)
+	if m.count == 0 {
+		return result
+	}
+
+	// start processes
+	for i := 0; i < m.count; i++ {
+		m.start <- 1
+	}
+
 	for {
 		select {
 		case p := <-m.Out:
@@ -191,7 +193,13 @@ func (m *Manager) End() []*Process {
 		}
 	}
 
+	m.Stop()
 	return result
+}
+
+// Stop forces workers to stop their process
+func (m *Manager) Stop() {
+	m.forceStop = true
 }
 
 // GetNotExecute returns ids represents process
