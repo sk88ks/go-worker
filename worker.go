@@ -6,6 +6,7 @@ type (
 	// Manager is manager for a workers
 	Manager struct {
 		count         int
+		processNum    int
 		workerNum     int
 		forceStop     bool
 		start         chan int
@@ -91,6 +92,7 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 func NewManager(workerNum int) *Manager {
 	m := &Manager{
 		count:         0,
+		processNum:    0,
 		workerNum:     workerNum,
 		forceStop:     false,
 		start:         make(chan int),
@@ -124,7 +126,7 @@ func (m *Manager) startWorker() {
 
 // Stop forces workers to stop their process
 func (m *Manager) stopProcesses() {
-	num := m.workerNum + m.count
+	num := m.workerNum + m.processNum
 	for i := 0; i < num; i++ {
 		m.stop <- 1
 	}
@@ -139,7 +141,7 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
 	}
 
 	p := &Process{
-		index:    m.count,
+		index:    m.processNum,
 		ID:       id,
 		Function: f,
 		Result:   nil,
@@ -147,6 +149,7 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
 	}
 
 	m.count++
+	m.processNum++
 	go func() {
 		<-m.start
 		for {
@@ -182,7 +185,6 @@ func (m *Manager) Run() []*Process {
 		m.start <- 1
 	}
 
-	count := m.count
 	for {
 		select {
 		case p := <-m.Out:
@@ -199,19 +201,19 @@ func (m *Manager) Run() []*Process {
 			}
 
 			result[p.index] = p
-			count--
+			m.count--
 		}
 
 		if m.forceStop {
 			break
 		}
 
-		if count <= 0 {
+		if m.count <= 0 {
 			break
 		}
 	}
 
-	m.stopProcesses()
+	go m.stopProcesses()
 	return result
 }
 
