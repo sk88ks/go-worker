@@ -22,39 +22,27 @@ import(
 
 func main() {
 
-  m := workers
+  var str string
+  var i int
+  workerNum := runtime.NumCPU()
+  m := worker.NewManager(workerNum)
+  m.Add("no1", function1, "this", "is", "test")
+  m.Add("no2", function2, 1, 2)
+  m.Success(func(p *worker.Process) {
+    // Process for success
+    // Can add new worker process like
+    // m.Add("success", funcWithSuccess, p.Result)
+    if p.ID == "no1" {
+      str = p.Result[0].(string)
+    }
+    
+  })
+  m.Fail(func(p *worker.Process) {
+    // Precess for fail
+    // Can stop all worker and process with Stop()
+    // m.Stop()
+  })
+  m.Run()
 
 }
 ```
-
-Custom Client
-----
-
-To create a configured` client,
-
-```go
-parseClient := goparse.NewClient(goparse.Config({
-  ApplicationId: "PARSE_APPLICATION_ID",
-  RestAPIKey: "PARSE_REST_API_KEY",
-  MasterKey: "PARSE_MASTER_KEY",
-  EndPointURL: "PARSE_ENDPOINT_URL"
-})
-
-parseSession := parseClient.NewSession()
-me, err := parseSession.GetMe()
-..
-```
-
-Environment variables
-----
-
-The default client uses environment variables to access Parse REST API.
-
-- `PARSE_APPLICATION_ID`
-- `PARSE_REST_API_KEY`
-- `PARSE_MASTER_KEY`
-- `PARSE_ENDPOINT_URL`
-
-License
-----
-Goparse is licensed under the MIT.
