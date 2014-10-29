@@ -1,6 +1,9 @@
 package worker
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 type (
 	// Manager is manager for a workers
@@ -9,6 +12,7 @@ type (
 		workerNum     int
 		forceStop     bool
 		start         chan int
+		stop          chan int
 		In            chan *Process
 		Out           chan *Process
 		FailFilter    []FilterFunc
@@ -93,6 +97,7 @@ func NewManager(workerNum int) *Manager {
 		workerNum:     workerNum,
 		forceStop:     false,
 		start:         make(chan int),
+		stop:          make(chan int),
 		In:            make(chan *Process, 1),
 		Out:           make(chan *Process, 1),
 		FailFilter:    []FilterFunc{},
@@ -109,13 +114,22 @@ func NewManager(workerNum int) *Manager {
 
 // start worker
 func (m *Manager) startWorker() {
-	for p := range m.In {
-		if m.forceStop {
+	for {
+		select {
+		case <-m.stop:
+			fmt.Println()
 			return
+		case p := <-m.In:
+			p.Result, p.Error = p.Function()
+			m.Out <- p
 		}
+	}
+}
 
-		p.Result, p.Error = p.Function()
-		m.Out <- p
+// Stop forces workers to stop their process
+func (m *Manager) stopWorkers() {
+	for i := 0; i < m.workerNum; i++ {
+		m.stop <- 1
 	}
 }
 
@@ -164,12 +178,17 @@ func (m *Manager) Run() []*Process {
 		return result
 	}
 
-	// start processes
+	// give processes workers
 	for i := 0; i < m.count; i++ {
 		m.start <- 1
 	}
 
+	count := m.count
 	for {
+		if m.forceStop {
+			break
+		}
+
 		select {
 		case p := <-m.Out:
 			if p.Error != nil {
@@ -185,19 +204,19 @@ func (m *Manager) Run() []*Process {
 			}
 
 			result[p.index] = p
-			m.count--
+			count--
 		}
 
-		if m.count <= 0 {
+		if count <= 0 {
 			break
 		}
 	}
 
-	m.Stop()
+	m.stopWorkers()
 	return result
 }
 
-// Stop forces workers to stop their process
+// Stop forces workers to stop
 func (m *Manager) Stop() {
 	m.forceStop = true
 }
