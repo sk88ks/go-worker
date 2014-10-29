@@ -9,8 +9,8 @@ type (
 		workerNum     int
 		forceStop     bool
 		start         chan int
-		Processes     chan *Process
-		Result        chan *Process
+		In            chan *Process
+		Out           chan *Process
 		FailFilter    []FilterFunc
 		SuccessFilter []FilterFunc
 		NotExec       []string
@@ -93,8 +93,8 @@ func NewManager(workerNum int) *Manager {
 		workerNum:     workerNum,
 		forceStop:     false,
 		start:         make(chan int),
-		Processes:     make(chan *Process, 1),
-		Result:        make(chan *Process, 1),
+		In:            make(chan *Process, 1),
+		Out:           make(chan *Process, 1),
 		FailFilter:    []FilterFunc{},
 		SuccessFilter: []FilterFunc{},
 		NotExec:       []string{},
@@ -109,13 +109,13 @@ func NewManager(workerNum int) *Manager {
 
 // start worker
 func (m *Manager) startWorker() {
-	for p := range m.Processes {
+	for p := range m.In {
 		if m.forceStop {
 			return
 		}
 
 		p.Result, p.Error = p.Function()
-		m.Result <- p
+		m.Out <- p
 	}
 }
 
@@ -140,7 +140,7 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) {
 		<-m.start
 		for {
 			select {
-			case m.Processes <- p:
+			case m.In <- p:
 				return
 			}
 		}
@@ -169,7 +169,7 @@ func (m *Manager) End() []*Process {
 	result := make([]*Process, m.count)
 	for {
 		select {
-		case p := <-m.Result:
+		case p := <-m.Out:
 			if p.Error != nil {
 				// execute fail filter
 				for _, f := range m.FailFilter {
