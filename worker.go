@@ -21,21 +21,27 @@ type (
 	// Process has an implementation
 	// for worker and information about process
 	Process struct {
-		index    int
 		ID       string
 		Function ProcessFunc
-		Result   []interface{}
+		Result   interface{}
 		Error    error
 	}
 
 	// ProcessFunc is function executed by individual worker
-	ProcessFunc func() ([]interface{}, error)
+	ProcessFunc func() (interface{}, error)
 
 	// FilterFunc is function executed at middle of process as filter
 	FilterFunc func(*Process)
 )
 
 // Wrap func to be used as WorkerFunc
+// Can use only function as ex
+// ex
+// func(.....) {} // return nothing
+// func(.....) error // return only error
+// func(.....) res // return only result
+// func(.....) (res, error) // return one result and  error
+//
 func wrap(function interface{}, args ...interface{}) ProcessFunc {
 	rv := reflect.ValueOf(function)
 	if rv.Kind() != reflect.Func {
@@ -46,15 +52,29 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 		return nil
 	}
 
+	outNum := rv.Type().NumOut()
+	resultIndex := -1
 	errorIndex := -1
-	if outNum := rv.Type().NumOut(); outNum != 0 {
-		for i := 0; i < outNum; i++ {
-			outName := rv.Type().Out(i).Name()
-			if outName == "error" {
-				errorIndex = i
-				break
-			}
+	switch outNum {
+	case 0:
+	case 1:
+		outName := rv.Type().Out(0).Name()
+		if outName == "error" {
+			errorIndex = 0
+		} else {
+			resultIndex = 0
 		}
+	case 2:
+		outName := rv.Type().Out(0).Name()
+		if outName == "error" {
+			resultIndex = 1
+			errorIndex = 0
+		} else if outName = rv.Type().Out(1).Name(); outName == "error" {
+			resultIndex = 0
+			errorIndex = 1
+		}
+	default:
+		return nil
 	}
 
 	rArgs := make([]reflect.Value, len(args))
@@ -62,17 +82,15 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 		rArgs[i] = reflect.ValueOf(arg)
 	}
 
-	return func() ([]interface{}, error) {
+	return func() (interface{}, error) {
 		ret := rv.Call(rArgs)
-		result := []interface{}{}
+		if outNum == 0 {
+			return nil, nil
+		}
 
 		var e interface{}
-		for i, v := range ret {
-			if i == errorIndex {
-				e = ret[i].Interface()
-				continue
-			}
-			result = append(result, v.Interface())
+		if errorIndex >= 0 {
+			e = ret[errorIndex].Interface()
 		}
 
 		err, ok := e.(error)
@@ -80,11 +98,11 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 			err = nil
 		}
 
-		if err != nil {
-			return result, err
+		if resultIndex < 0 {
+			return nil, err
 		}
 
-		return result, nil
+		return ret[resultIndex].Interface(), err
 	}
 }
 
@@ -141,7 +159,6 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) *Man
 	}
 
 	p := &Process{
-		index:    m.processNum,
 		ID:       id,
 		Function: f,
 		Result:   nil,
@@ -155,9 +172,9 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) *Man
 		for {
 			select {
 			case <-m.stop:
-				break
+				return
 			case m.In <- p:
-				break
+				return
 			}
 		}
 	}()
@@ -178,10 +195,19 @@ func (m *Manager) Success(f ...FilterFunc) *Manager {
 }
 
 // Run retrieves result by worker
-func (m *Manager) Run() []*Process {
-	result := make([]*Process, m.count)
+func (m *Manager) Run(result interface{}) []*Process {
+	processes := []*Process{}
 	if m.count == 0 {
-		return result
+		return processes
+	}
+
+	setFlg := false
+	rv := reflect.ValueOf(result)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	if rv.IsValid() {
+		setFlg = true
 	}
 
 	// give processes workers
@@ -190,6 +216,14 @@ func (m *Manager) Run() []*Process {
 	}
 
 	for {
+		if m.count <= 0 {
+			break
+		}
+
+		if m.forceStop {
+			break
+		}
+
 		select {
 		case p := <-m.Out:
 			if p.Error != nil {
@@ -197,28 +231,38 @@ func (m *Manager) Run() []*Process {
 				for _, f := range m.FailFilter {
 					f(p)
 				}
-			} else if len(p.Result) != 0 {
+			} else if p.Result != nil {
 				// execute success filter
 				for _, f := range m.SuccessFilter {
 					f(p)
 				}
 			}
 
-			result[p.index] = p
+			processes = append(processes, p)
 			m.count--
-		}
 
-		if m.forceStop {
-			break
-		}
+			if !setFlg {
+				continue
+			}
 
-		if m.count <= 0 {
-			break
+			field := rv.FieldByName(p.ID)
+			if !field.CanSet() {
+				continue
+			}
+			fieldType := field.Type()
+
+			resultValue := reflect.ValueOf(p.Result)
+			resultType := resultValue.Type()
+
+			if fieldType != resultType {
+				continue
+			}
+			field.Set(resultValue)
 		}
 	}
 
 	go m.stopProcesses()
-	return result
+	return processes
 }
 
 // Stop forces workers to stop
