@@ -106,8 +106,8 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 	}
 }
 
-// NewManager is creating a new manager for workers
-func NewManager(workerNum int) *Manager {
+// New is creating a new manager for workers
+func New(workerNum int) *Manager {
 	m := &Manager{
 		count:         0,
 		processNum:    0,

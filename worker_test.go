@@ -65,12 +65,12 @@ func TestWrap(t *testing.T) {
 	})
 }
 
-func TestNewManager(t *testing.T) {
+func TestNew(t *testing.T) {
 	Convey("Given workerNum", t, func() {
 		wn := 5
 
 		Convey("When create new manager", func() {
-			m := NewManager(wn)
+			m := New(wn)
 
 			Convey("Then returned is Manager", func() {
 				So(m, ShouldHaveSameTypeAs, &Manager{})
@@ -84,7 +84,7 @@ func TestAdd(t *testing.T) {
 	Convey("Given function and Manager", t, func() {
 		f := "test"
 
-		m := NewManager(5)
+		m := New(5)
 
 		Convey("When Add the function", func() {
 			m.Add("test_add", f, "test", 0, []string{"0", "1", "2"})
@@ -105,7 +105,7 @@ func TestAdd(t *testing.T) {
 			return a + c[index], nil
 		}
 
-		m := NewManager(5)
+		m := New(5)
 
 		Convey("When Add the function", func() {
 			m.Add("test_add", f, "test", 0, []string{"0", "1", "2"})
@@ -126,7 +126,7 @@ func TestRun(t *testing.T) {
 			return a + c[index], nil
 		}
 
-		m := NewManager(5)
+		m := New(5)
 		m.Add("TestRun1", f, "test1", 0, []string{"0", "1", "2"})
 		m.Add("TestRun2", f, "test2", 0, []string{"0", "1", "2"})
 
@@ -156,7 +156,7 @@ func TestFail(t *testing.T) {
 			return a + c[index], nil
 		}
 
-		m := NewManager(5)
+		m := New(5)
 
 		Convey("When Add the function", func() {
 			m.Add("test_fail", f, "test", 10, []string{"0", "1", "2"})
@@ -183,7 +183,7 @@ func TestSuccess(t *testing.T) {
 			return a + c[index], nil
 		}
 
-		m := NewManager(5)
+		m := New(5)
 
 		Convey("When Add the function", func() {
 			m.Add("test_1", f, "test", 0, []string{"0", "1", "2"})
