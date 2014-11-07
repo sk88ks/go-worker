@@ -127,17 +127,20 @@ func TestRun(t *testing.T) {
 		}
 
 		m := NewManager(5)
-		m.Add("TestRun", f, "test", 0, []string{"0", "1", "2"})
+		m.Add("TestRun1", f, "test1", 0, []string{"0", "1", "2"})
+		m.Add("TestRun2", f, "test2", 0, []string{"0", "1", "2"})
 
 		Convey("When retrieves results", func() {
 			type Result struct {
-				TestRun string
+				TestRun1 string
+				TestRun2 string
 			}
 			res := &Result{}
 			m.Run(res)
 
 			Convey("Then err is returned", func() {
-				So(res.TestRun, ShouldEqual, "test0")
+				So(res.TestRun1, ShouldEqual, "test10")
+				So(res.TestRun2, ShouldEqual, "test20")
 			})
 		})
 	})
