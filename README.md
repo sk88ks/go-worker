@@ -48,7 +48,7 @@ func main() {
     // m.Stop()
   })
   
-  // Also be able to retrieve result by using pointer struct
+  // Also be able to retrieve results by using pointer struct
   result := Result{
   m.Run(&result)
 
