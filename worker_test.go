@@ -11,7 +11,7 @@ func TestWrap(t *testing.T) {
 	Convey("Given a not function", t, func() {
 		f := "test"
 
-		Convey("When args num is same as function args len", func() {
+		Convey("When args num is not same as function args len", func() {
 			wf := wrap(f, "test", 1, []string{"1", "2", "3"})
 
 			Convey("Then returned ProcessFunc", func() {
@@ -42,7 +42,7 @@ func TestWrap(t *testing.T) {
 			})
 		})
 
-		Convey("When args num is same as function args len", func() {
+		Convey("When args num is same as function args len for returning err", func() {
 			wf := wrap(f, "test", 10, []string{"1", "2", "3"})
 
 			Convey("Then returned error", func() {

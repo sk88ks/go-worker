@@ -21,6 +21,7 @@ type (
 	// Process has an implementation
 	// for worker and information about process
 	Process struct {
+		index    int
 		ID       string
 		Function ProcessFunc
 		Result   interface{}
@@ -109,10 +110,7 @@ func wrap(function interface{}, args ...interface{}) ProcessFunc {
 // New is creating a new manager for workers
 func New(workerNum int) *Manager {
 	m := &Manager{
-		count:         0,
-		processNum:    0,
 		workerNum:     workerNum,
-		forceStop:     false,
 		start:         make(chan int),
 		stop:          make(chan int),
 		In:            make(chan *Process, 1),
@@ -159,6 +157,7 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) *Man
 	}
 
 	p := &Process{
+		index:    m.count,
 		ID:       id,
 		Function: f,
 		Result:   nil,
@@ -167,6 +166,7 @@ func (m *Manager) Add(id string, function interface{}, args ...interface{}) *Man
 
 	m.count++
 	m.processNum++
+
 	go func() {
 		<-m.start
 		for {
@@ -196,7 +196,7 @@ func (m *Manager) Success(f ...FilterFunc) *Manager {
 
 // Run retrieves result by worker
 func (m *Manager) Run(result interface{}) []*Process {
-	processes := []*Process{}
+	processes := make([]*Process, m.count)
 	if m.count == 0 {
 		return processes
 	}
@@ -238,7 +238,7 @@ func (m *Manager) Run(result interface{}) []*Process {
 				}
 			}
 
-			processes = append(processes, p)
+			processes[p.index] = p
 			m.count--
 
 			if !setFlg {
