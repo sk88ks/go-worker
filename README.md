@@ -20,14 +20,19 @@ import(
   "github.com/sk88ks/go-wokers"
 )
 
+type Result struct {
+  Sample1 String
+  Sample2 int
+}
+
 func main() {
 
   var str string
   var i int
   workerNum := runtime.NumCPU()
   m := worker.NewManager(workerNum)
-  m.Add("no1", function1, "this", "is", "test")
-  m.Add("no2", function2, 1, 2)
+  m.Add("Sample1", function1, "this", "is", "test")
+  m.Add("Sample2", function2, 1, 2)
   m.Success(func(p *worker.Process) {
     // Process for success
     // Can add new worker process like
@@ -42,7 +47,10 @@ func main() {
     // Can stop all worker and process with Stop()
     // m.Stop()
   })
-  m.Run()
+  
+  // Also be able to retrieve results by using pointer struct
+  result := Result{
+  m.Run(&result)
 
 }
 ```
