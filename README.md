@@ -3,6 +3,10 @@ go-workers
 
 Go-workers is a helper allow you to handle consistency process with goroutines
 
+Current API Documents:
+
+* go-worker: [![GoDoc](https://godoc.org/github.com/sk88ks/go-worker?status.svg)](https://godoc.org/github.com/sk88ks/go-worker)
+
 Installation
 ----
 
