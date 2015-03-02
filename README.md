@@ -1,6 +1,8 @@
 go-workers
 ====
 
+[![Build Status](https://travis-ci.org/sk88ks/go-worker.svg?branch=master)](https://travis-ci.org/sk88ks/go-worker)
+
 Go-workers is a helper allow you to handle consistency process with goroutines
 
 Current API Documents:
