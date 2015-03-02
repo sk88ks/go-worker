@@ -2,6 +2,7 @@ go-workers
 ====
 
 [![Build Status](https://travis-ci.org/sk88ks/go-worker.svg?branch=master)](https://travis-ci.org/sk88ks/go-worker)
+
 [![Coverage Status](https://coveralls.io/repos/sk88ks/go-worker/badge.svg?branch=master)](https://coveralls.io/r/sk88ks/go-worker?branch=master)
 
 Go-workers is a helper allow you to handle consistency process with goroutines
