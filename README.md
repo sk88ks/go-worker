@@ -30,7 +30,7 @@ func main() {
   var str string
   var i int
   workerNum := runtime.NumCPU()
-  m := worker.NewManager(workerNum)
+  m := worker.New(workerNum)
   m.Add("Sample1", function1, "this", "is", "test")
   m.Add("Sample2", function2, 1, 2)
   m.Success(func(p *worker.Process) {
